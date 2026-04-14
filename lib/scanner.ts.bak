@@ -1,0 +1,95 @@
+// Ensure the browser-side graphics stub is present for pdf-parse
+if (typeof global.DOMMatrix === 'undefined') {
+  // @ts-ignore
+  global.DOMMatrix = class DOMMatrix {};
+}
+
+/** * IMPORTANT: We import from 'lib/pdf-parse.js' to bypass 
+ * the self-test crash in Next.js Turbopack.
+ */
+const pdf = require('pdf-parse/lib/pdf-parse.js');
+
+export interface ThreatSignal {
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  detail: string;
+}
+
+export interface ScanResult {
+  score: number;
+  threats: string[];
+  extractedText: string;
+  signals: ThreatSignal[];
+}
+
+export async function analyzeFile(buffer: Buffer, filename: string): Promise<ScanResult> {
+  let text = "";
+  const threats: string[] = [];
+  const signals: ThreatSignal[] = [];
+  let score = 0;
+
+  // --- 1. STRUCTURAL BINARY SCAN ---
+  // Scans the raw bytes for malicious PDF "Action" tags
+  const rawContent = buffer.toString('binary');
+  
+  const structuralTags = [
+    { tag: '/JS', label: 'Embedded JavaScript', risk: 40, severity: 'high' as const },
+    { tag: '/JavaScript', label: 'Embedded JavaScript', risk: 40, severity: 'high' as const },
+    { tag: '/OpenAction', label: 'Auto-Execute on Open', risk: 50, severity: 'critical' as const },
+    { tag: '/AA', label: 'Additional Action Trigger', risk: 30, severity: 'high' as const },
+    { tag: '/Launch', label: 'External Program Launch', risk: 60, severity: 'critical' as const },
+    { tag: '/EmbeddedFiles', label: 'Hidden Embedded Payload', risk: 40, severity: 'high' as const }
+  ];
+
+  structuralTags.forEach(({ tag, label, risk, severity }) => {
+    if (rawContent.includes(tag)) {
+      threats.push(`Structural Risk: ${tag}`);
+      signals.push({ 
+        severity, 
+        detail: `Detected malicious structure: ${label} (${tag})` 
+      });
+      score += risk;
+    }
+  });
+
+  // --- 2. TEXT EXTRACTION ---
+  if (filename.endsWith('.pdf')) {
+    try {
+      /**
+       * We removed the { pagerender: () => '' } option.
+       * This allows the actual text to be extracted!
+       */
+      const data = await pdf(buffer);
+      text = data.text;
+    } catch (err) {
+      console.error("Extraction error:", err);
+      text = ""; 
+    }
+  } else {
+    text = buffer.toString('utf-8');
+  }
+
+  // Fallback if no text was found (Zero-Trust safety notice)
+  if (!text || text.trim() === "") {
+    text = "[System: Image-based or Empty PDF]";
+  }
+
+  // --- 3. KEYWORD ANALYSIS ---
+  const maliciousKeywords = ['javascript:', 'cmd.exe', 'powershell', 'eval(', 'base64_decode'];
+  maliciousKeywords.forEach(word => {
+    if (text.toLowerCase().includes(word)) {
+      threats.push(`Keyword Found: ${word}`);
+      signals.push({ 
+        severity: 'high', 
+        detail: `Suspicious command found in text content: ${word}` 
+      });
+      score += 20;
+    }
+  });
+
+  return { 
+    score: Math.min(score, 100), 
+    threats, 
+    extractedText: text,
+    signals
+  };
+}
