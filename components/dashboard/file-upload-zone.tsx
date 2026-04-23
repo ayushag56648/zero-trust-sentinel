@@ -1,7 +1,7 @@
 "use client"
 // components/dashboard/file-upload-zone.tsx
 
-import { useRef } from "react"
+import { useMemo, useRef } from "react"
 import { Upload, FileText, Lock, Hash, ShieldCheck, Download, AlertTriangle } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -34,6 +34,16 @@ export function FileUploadZone() {
   const { state, setState, reset, updateStage } = useScan()
   const { pipelineStatus, progress, filename, stages, result, errorMsg } = state
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const userId = useMemo(() => {
+    if (typeof window === 'undefined') return ''
+    const key = 'zts_user_id'
+    let id = window.localStorage.getItem(key) ?? ''
+    if (!id) {
+      id = crypto.randomUUID()
+      window.localStorage.setItem(key, id)
+    }
+    return id
+  }, [])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -58,7 +68,11 @@ export function FileUploadZone() {
     formData.append('file', file)
 
     try {
-      const response = await fetch('/api/scan', { method: 'POST', body: formData })
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        body: formData,
+        headers: userId ? { 'x-user-id': userId } : undefined,
+      })
 
       if (!response.ok || !response.body) {
         throw new Error(`Server returned ${response.status}`)
