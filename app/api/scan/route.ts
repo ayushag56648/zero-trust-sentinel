@@ -5,7 +5,6 @@ import { analyzeFile } from '@/lib/scanner'
 import { createSafePdf } from '@/lib/reconstructor'
 import Groq from 'groq-sdk'
 
-
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? '' })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,36 +42,6 @@ const DISARM_KEYWORDS = [
 
 export async function POST(req: NextRequest) {
   console.log(process.env.GROQ_API_KEY ? 'Groq API Key Found' : 'Groq API Key Missing')
-
-  // ── Gatekeeper (DB quota check) ──────────────────────────────────────────
-  const userId = req.headers.get('x-user-id')?.trim()
-  if (!userId) {
-    return new Response(
-      JSON.stringify({ error: 'Missing user identity (x-user-id header)' }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
-
-  const gatekeeperEnabled = isGatekeeperConfigured()
-  if (gatekeeperEnabled) {
-    try {
-      const scanCount = await getUserScanCount(userId)
-      if (scanCount >= 3) {
-        return new Response(
-          JSON.stringify({ error: 'Scan limit reached (3). Access denied.' }),
-          { status: 403, headers: { 'Content-Type': 'application/json' } },
-        )
-      }
-    } catch (dbErr: any) {
-      console.error('[gatekeeper] db error:', dbErr?.message ?? dbErr)
-      return new Response(
-        JSON.stringify({ error: 'Gatekeeper database unavailable' }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } },
-      )
-    }
-  } else {
-    console.warn('[gatekeeper] disabled: missing MySQL env vars')
-  }
 
   const encoder = new TextEncoder()
 
@@ -142,12 +111,27 @@ export async function POST(req: NextRequest) {
             )
 
             const completion = await groq.chat.completions.create({
-              model: 'llama3-70b-8192',
-              temperature: 0.2,
+              model: 'llama-3.1-8b-instant', // Switched to instant for speed
+              temperature: 0.1, // Lower temperature for more consistent threat reports
               messages: [
                 {
                   role: 'system',
-                  content: 'You are a PDF malware analyst. Reply in exactly two lines: line 1 is SAFE or MALICIOUS, line 2 is one short plain-English reason.',
+                  content: `You are an expert, user-friendly cybersecurity AI. Your job is to analyze document scan results and output a visually attractive, easy-to-read summary.
+
+STRICT FORMATTING RULES:
+1. Do not use technical jargon (e.g., "Object Stream", "entropy", "obfuscation").
+2. Your response must exactly follow this 3-part visual structure:
+
+[Line 1 - Status Header]
+If safe, output: "✅ STATUS: SECURE & CLEAN"
+If threats found, output: "🚨 STATUS: THREAT NEUTRALIZED"
+
+[Line 2 - Empty Line]
+
+[Line 3+ - Bullet Points]
+Use "•" for bullet points. Provide 1 to 2 short, punchy sentences explaining exactly what was found.
+- Safe Example: "• Verified professional links are safe.\n• No hidden scripts or automatic triggers detected."
+- Threat Example: "• Blocked a hidden script trying to run automatically.\n• Found and neutralized a suspicious external link."`,
                 },
                 {
                   role: 'user',
@@ -236,16 +220,6 @@ ${JSON.stringify(extractedSnippet)}`,
           aiAnalysis,
           reconstructedFile: `data:application/pdf;base64,${base64Pdf}`,
         })
-
-        // Gatekeeper increment (only after successful full pipeline)
-        if (gatekeeperEnabled) {
-          try {
-            await incrementUserScanCount(userId)
-          } catch (dbErr: any) {
-            // Non-fatal — scan succeeded, usage tracking failed
-            console.warn('[gatekeeper] increment failed (non-fatal):', dbErr?.message ?? dbErr)
-          }
-        }
 
       } catch (err: any) {
         console.error('[route] pipeline crash:', err?.message, err?.stack)
