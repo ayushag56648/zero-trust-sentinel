@@ -13,6 +13,13 @@
 
 import { PDFDocument, PDFName, PDFDict, PDFStream, rgb, StandardFonts } from 'pdf-lib'
 import sharp from 'sharp'
+import os from 'node:os'
+import path from 'node:path'
+import { writeFile, readFile, unlink, readdir } from 'node:fs/promises'
+import { exec } from 'node:child_process'
+import { promisify } from 'node:util'
+
+const execPromise = promisify(exec)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dangerous PDF catalogue keys — none of these must exist in the output
@@ -52,7 +59,7 @@ async function sanitiseImage(
     .rotate()          // honour EXIF orientation, then discard EXIF
     .withMetadata({})  // write zero metadata fields
 
-  const { width = 0, height = 0 } = await img.metadata().catch(() => ({}))
+  const { width = 0, height = 0 } = await img.metadata().catch(() => ({} as any))
 
   const png = await img
     .png({ compressionLevel: 6, adaptiveFiltering: false })
@@ -128,6 +135,77 @@ export async function createSafePdf(
   const cleanImages: Array<{ pngBytes: Buffer; width: number; height: number }> = []
 
   if (originalBuffer) {
+    // ── Primary Method: Poppler Rasterisation ──────────────────────────────
+    const tmpDir = os.tmpdir();
+    const uniqueId = `zts_cdr_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const inputPath = path.join(tmpDir, `${uniqueId}.pdf`);
+    const outputPrefix = path.join(tmpDir, uniqueId);
+
+    let popplerSucceeded = false;
+    await writeFile(inputPath, originalBuffer);
+
+    try {
+      // Execute pdftoppm if available
+      await execPromise(`pdftoppm -png -r 150 "${inputPath}" "${outputPrefix}"`);
+      
+      const files = await readdir(tmpDir);
+      const imageFiles = files
+        .filter(f => f.startsWith(uniqueId) && f.endsWith('.png'))
+        .sort((a, b) => {
+          const numA = parseInt(a.match(/-(\d+)\.png$/)?.[1] || '0', 10);
+          const numB = parseInt(b.match(/-(\d+)\.png$/)?.[1] || '0', 10);
+          return numA - numB;
+        });
+
+      if (imageFiles.length > 0) {
+        for (const imgFile of imageFiles) {
+          const imgPath = path.join(tmpDir, imgFile);
+          const imgBytes = await readFile(imgPath);
+          
+          const image = await outDoc.embedPng(imgBytes);
+          const pdfWidth = (image.width / 150) * 72;
+          const pdfHeight = (image.height / 150) * 72;
+          
+          const page = outDoc.addPage([pdfWidth, pdfHeight]);
+          page.drawImage(image, {
+            x: 0, y: 0, width: pdfWidth, height: pdfHeight,
+          });
+          
+          await unlink(imgPath).catch(() => {});
+        }
+        popplerSucceeded = true;
+      }
+    } catch (err) {
+      console.warn('[reconstructor] pdftoppm not found on serverless environment, skipping image rendering:', err);
+      // Safe fallback for serverless deployments
+    } finally {
+      await unlink(inputPath).catch(() => {});
+    }
+
+    if (popplerSucceeded) {
+      // ── 7. Strip dangerous keys from output catalogue ────────────────────────
+      try {
+        const catRef  = outDoc.context.trailerInfo.Root
+        const catDict = outDoc.context.lookup(catRef, PDFDict)
+        for (const key of DANGEROUS_CATALOGUE_KEYS) {
+          catDict.delete(PDFName.of(key))
+        }
+      } catch { /* catalogue access failed — non-fatal */ }
+
+      // ── 8. Write safe metadata (FIX 6 — sanitised filename) ─────────────────
+      const safeName = sanitiseFilename(originalName)
+      outDoc.setTitle(`Safe_${safeName}`)
+      outDoc.setAuthor('Zero-Trust Sentinel CDR')
+      outDoc.setSubject('Reconstructed document — all active content removed')
+      outDoc.setKeywords([])
+      outDoc.setProducer('ZTS-CDR v2')
+      outDoc.setCreator('ZTS-CDR v2')
+
+      const pdfBytes = await outDoc.save({ useObjectStreams: false })
+      return Buffer.from(pdfBytes)
+    }
+
+    // ── Fallback Method: Text + Image Extraction ───────────────────────────
     try {
       // Load source read-only — we NEVER copy PDF objects from it
       const srcDoc = await PDFDocument.load(originalBuffer, {
