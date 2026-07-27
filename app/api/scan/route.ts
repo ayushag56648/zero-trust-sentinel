@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server'
 import { analyzeFile } from '@/lib/scanner'
 import { createSafePdf } from '@/lib/reconstructor'
 import Groq from 'groq-sdk'
-import { getUserScanCount, incrementUserScanCount, isGatekeeperConfigured } from '@/lib/mysql'
+
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? '' })
 
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
         }
 
         send({
-          stage:  'extract',
+          stage: 'extract',
           status: 'done',
           message: `Extracted ${buffer.length.toLocaleString()} bytes`,
         })
@@ -133,8 +133,8 @@ export async function POST(req: NextRequest) {
         if (isPdf && process.env.GROQ_API_KEY) {
           try {
             const structuralSignals = scanResult.signals.filter((s: any) => s.type === 'structural')
-            const extractedSnippet  = scanResult.extractedText.substring(0, 400)
-            const hasJavaScriptTag  = structuralSignals.some(
+            const extractedSnippet = scanResult.extractedText.substring(0, 400)
+            const hasJavaScriptTag = structuralSignals.some(
               (s: any) => String(s?.detail ?? '').includes('/JavaScript') || String(s?.detail ?? '').includes('/JS'),
             )
             const hasOpenActionTag = structuralSignals.some((s: any) =>
@@ -142,15 +142,15 @@ export async function POST(req: NextRequest) {
             )
 
             const completion = await groq.chat.completions.create({
-              model:       'llama3-70b-8192',
+              model: 'llama3-70b-8192',
               temperature: 0.2,
               messages: [
                 {
-                  role:    'system',
+                  role: 'system',
                   content: 'You are a PDF malware analyst. Reply in exactly two lines: line 1 is SAFE or MALICIOUS, line 2 is one short plain-English reason.',
                 },
                 {
-                  role:    'user',
+                  role: 'user',
                   content: `Assess this uploaded PDF.
 
 File: ${file.name}
@@ -178,12 +178,12 @@ ${JSON.stringify(extractedSnippet)}`,
         }
 
         send({
-          stage:        'scan',
-          status:       'done',
-          message:      `${scanResult.signals.length} signal(s) detected`,
-          score:        scanResult.score,
-          riskLevel:    scanResult.riskLevel,
-          signals:      scanResult.signals,
+          stage: 'scan',
+          status: 'done',
+          message: `${scanResult.signals.length} signal(s) detected`,
+          score: scanResult.score,
+          riskLevel: scanResult.riskLevel,
+          signals: scanResult.signals,
           elementCount: scanResult.elementCount,
           aiAnalysis,
         })
@@ -191,7 +191,7 @@ ${JSON.stringify(extractedSnippet)}`,
         // ── Stage 3: disarm ────────────────────────────────────────────────
         send({ stage: 'disarm', status: 'running', message: 'Neutralising threats...' })
 
-        let safeText      = scanResult.extractedText
+        let safeText = scanResult.extractedText
         let disarmedCount = 0
 
         for (const word of DISARM_KEYWORDS) {
@@ -201,38 +201,38 @@ ${JSON.stringify(extractedSnippet)}`,
         }
 
         send({
-          stage:   'disarm',
-          status:  'done',
+          stage: 'disarm',
+          status: 'done',
           message: `${disarmedCount} threat(s) neutralised`,
         })
 
         // ── Stage 4: reconstruct ───────────────────────────────────────────
         send({
-          stage:   'reconstruct',
-          status:  'running',
+          stage: 'reconstruct',
+          status: 'running',
           message: 'Rebuilding clean document (text + images)...',
         })
 
         // Pass original buffer so reconstructor can extract, sanitise (EXIF
         // strip via sharp), and re-embed every image found in the source PDF.
-        const cleanPdf  = await createSafePdf(safeText, file.name, buffer)
+        const cleanPdf = await createSafePdf(safeText, file.name, buffer)
         const base64Pdf = cleanPdf.toString('base64')
-        const safeName  = file.name.replace(/\.[^.]+$/, '')
+        const safeName = file.name.replace(/\.[^.]+$/, '')
 
         send({
-          stage:   'reconstruct',
-          status:  'done',
+          stage: 'reconstruct',
+          status: 'done',
           message: `Reconstruction complete — ${(cleanPdf.length / 1024).toFixed(1)} KB`,
         })
 
         // ── Complete ───────────────────────────────────────────────────────
         send({
-          stage:             'complete',
-          status:            'done',
-          filename:          `Safe_${safeName}.pdf`,
-          score:             scanResult.score,
-          riskLevel:         scanResult.riskLevel,
-          signals:           scanResult.signals,
+          stage: 'complete',
+          status: 'done',
+          filename: `Safe_${safeName}.pdf`,
+          score: scanResult.score,
+          riskLevel: scanResult.riskLevel,
+          signals: scanResult.signals,
           aiAnalysis,
           reconstructedFile: `data:application/pdf;base64,${base64Pdf}`,
         })
@@ -258,9 +258,9 @@ ${JSON.stringify(extractedSnippet)}`,
 
   return new Response(stream, {
     headers: {
-      'Content-Type':     'text/event-stream',
-      'Cache-Control':    'no-cache, no-transform',
-      'Connection':       'keep-alive',
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
     },
   })
