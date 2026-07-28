@@ -1,180 +1,86 @@
-"use client"
-
-import { FileText, FileSpreadsheet, MoreHorizontal } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 
-const auditLogs = [
+type AuditRow = {
+  filename: string
+  type: string
+  uploadedBy: string
+  riskLevel: "Low Risk" | "Medium Risk" | "Critical Risk"
+  action: string
+}
+
+const auditRows: AuditRow[] = [
   {
-    id: 1,
     filename: "invoice_secure.pdf",
-    fileType: "PDF",
-    uploadedBy: "Alice Johnson",
-    riskLevel: "low",
+    type: "PDF",
+    uploadedBy: "Alice Jhonson",
+    riskLevel: "Low Risk",
     action: "Clean",
-    timestamp: "2 min ago",
   },
   {
-    id: 2,
     filename: "resume_suspect.docx",
-    fileType: "DOCX",
+    type: "DOCX",
     uploadedBy: "Bob Smith",
-    riskLevel: "critical",
-    action: "Threat detected — file reconstructed",
-    timestamp: "15 min ago",
+    riskLevel: "Critical Risk",
+    action: "Threat detected - file reconstructed",
   },
   {
-    id: 3,
     filename: "report.pdf",
-    fileType: "PDF",
+    type: "PDF",
     uploadedBy: "Charlie",
-    riskLevel: "medium",
+    riskLevel: "Medium Risk",
     action: "File scanned successfully",
-    timestamp: "1 hour ago",
   },
 ]
 
-function getRiskBadge(risk: string) {
-  switch (risk) {
-    case "low":
-      return (
-        <Badge className="bg-primary/20 text-primary hover:bg-primary/30 border-0">
-          Low Risk
-        </Badge>
-      )
-    case "medium":
-      return (
-        <Badge className="bg-amber-warning/20 text-amber-warning hover:bg-amber-warning/30 border-0">
-          Medium Risk
-        </Badge>
-      )
-    case "critical":
-      return (
-        <Badge className="bg-critical-red/20 text-critical-red hover:bg-critical-red/30 border-0">
-          Critical Risk
-        </Badge>
-      )
-    default:
-      return null
-  }
-}
-
-function getFileIcon(type: string) {
-  switch (type) {
-    case "PDF":
-      return <FileText className="h-4 w-4 text-critical-red" />
-    case "DOCX":
-      return <FileSpreadsheet className="h-4 w-4 text-blue-400" />
-    default:
-      return <FileText className="h-4 w-4 text-muted-foreground" />
-  }
+function riskClass(level: AuditRow["riskLevel"]): string {
+  if (level === "Low Risk") return "bg-green-500/15 text-green-400"
+  if (level === "Critical Risk") return "bg-red-500/15 text-red-400"
+  return "bg-amber-500/15 text-amber-400"
 }
 
 export function AuditLogsTable() {
   return (
-    <Card className="glass-card overflow-hidden">
-      <div className="border-b border-border/50 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">
-              Audit Logs & Recent Scans
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              System activity monitoring
-            </p>
-          </div>
-          <Button variant="outline" size="sm" className="text-xs">
-            View All Logs
-          </Button>
+    <Card className="glass-card p-6">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-semibold text-foreground">Audit Logs & Recent Scans</h3>
+          <p className="text-sm text-muted-foreground">System activity monitoring</p>
         </div>
+        <Button variant="outline" size="sm">
+          View All Logs
+        </Button>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border/50 hover:bg-transparent">
-              <TableHead className="text-xs font-medium text-muted-foreground">
-                Filename
-              </TableHead>
-              <TableHead className="text-xs font-medium text-muted-foreground">
-                Type
-              </TableHead>
-              <TableHead className="text-xs font-medium text-muted-foreground">
-                Uploaded By
-              </TableHead>
-              <TableHead className="text-xs font-medium text-muted-foreground">
-                Risk Level
-              </TableHead>
-              <TableHead className="text-xs font-medium text-muted-foreground">
-                Action
-              </TableHead>
-              <TableHead className="text-xs font-medium text-muted-foreground text-right">
-                Time
-              </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {auditLogs.map((log) => (
-              <TableRow
-                key={log.id}
-                className="border-border/30 hover:bg-secondary/30"
-              >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {getFileIcon(log.fileType)}
-                    <span className="text-sm font-medium text-foreground">
-                      {log.filename}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span className="rounded bg-secondary px-2 py-1 text-xs text-muted-foreground">
-                    {log.fileType}
+      <div className="overflow-x-auto rounded-md border border-border/40">
+        <table className="w-full min-w-[760px] text-sm">
+          <thead className="bg-secondary/40 text-left text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 font-medium">Filename</th>
+              <th className="px-4 py-3 font-medium">Type</th>
+              <th className="px-4 py-3 font-medium">Uploaded By</th>
+              <th className="px-4 py-3 font-medium">Risk Level</th>
+              <th className="px-4 py-3 font-medium">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {auditRows.map((row) => (
+              <tr key={`${row.filename}-${row.uploadedBy}`} className="border-t border-border/30">
+                <td className="px-4 py-3 font-medium text-foreground">{row.filename}</td>
+                <td className="px-4 py-3 text-muted-foreground">
+                  <span className="rounded-md bg-secondary px-2 py-1 text-xs">{row.type}</span>
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{row.uploadedBy}</td>
+                <td className="px-4 py-3">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${riskClass(row.riskLevel)}`}>
+                    {row.riskLevel}
                   </span>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {log.uploadedBy}
-                </TableCell>
-                <TableCell>{getRiskBadge(log.riskLevel)}</TableCell>
-                <TableCell>
-                  <span
-                    className={`text-sm ${
-                      log.riskLevel === "critical"
-                        ? "text-amber-warning"
-                        : log.riskLevel === "low"
-                        ? "text-primary"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {log.action}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right text-xs text-muted-foreground">
-                  {log.timestamp}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
+                </td>
+                <td className="px-4 py-3 text-foreground">{row.action}</td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     </Card>
   )

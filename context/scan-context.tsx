@@ -30,6 +30,7 @@ export interface FinalResult {
   signals:           ThreatSignal[]
   reconstructedFile: string
   filename:          string
+  aiAnalysis?:       string
 }
 
 export interface ScanState {

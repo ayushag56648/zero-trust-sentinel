@@ -2,7 +2,7 @@
 // components/dashboard/file-upload-zone.tsx
 
 import { useMemo, useRef } from "react"
-import { Upload, FileText, Lock, Hash, ShieldCheck, Download, AlertTriangle } from "lucide-react"
+import { Upload, FileText, Lock, Hash, ShieldCheck, Download, AlertTriangle, Bot } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { useScan, StageId } from "@/context/scan-context"
@@ -74,8 +74,19 @@ export function FileUploadZone() {
         headers: userId ? { 'x-user-id': userId } : undefined,
       })
 
-      if (!response.ok || !response.body) {
-        throw new Error(`Server returned ${response.status}`)
+      if (!response.ok) {
+        let detail = ''
+        try {
+          const payload = await response.json()
+          detail = typeof payload?.error === 'string' ? payload.error : ''
+        } catch {
+          // Non-JSON error payload; keep fallback below.
+        }
+        throw new Error(detail || `Server returned ${response.status}`)
+      }
+
+      if (!response.body) {
+        throw new Error('Server did not return a response stream')
       }
 
       const reader  = response.body.getReader()
@@ -112,6 +123,7 @@ export function FileUploadZone() {
                 signals:           event.signals ?? [],
                 reconstructedFile: event.reconstructedFile,
                 filename:          event.filename,
+                aiAnalysis:        event.aiAnalysis,
               },
             }))
 
@@ -294,17 +306,20 @@ export function FileUploadZone() {
             </div>
           )}
 
-          {/* Signal list */}
-          {result && result.signals.length > 0 && (
-            <div className="rounded-md border border-border/30 bg-secondary/20 p-3 space-y-1 max-h-40 overflow-y-auto">
-              {result.signals.map((sig, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs">
-                  <AlertTriangle
-                    className={`h-3 w-3 shrink-0 mt-0.5 ${SEV_COLOR[sig.severity] ?? 'text-muted-foreground'}`}
-                  />
-                  <span className="text-muted-foreground">{sig.detail}</span>
-                </div>
-              ))}
+          {/* AI Assessment Card */}
+          {result && (
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-4 mt-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Bot className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">AI Security Assessment</h3>
+              </div>
+              <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                {result.aiAnalysis ? (
+                  result.aiAnalysis
+                ) : (
+                  <span className="italic opacity-80">Assessment not available.</span>
+                )}
+              </div>
             </div>
           )}
 

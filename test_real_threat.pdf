@@ -1,0 +1,90 @@
+%PDF-1.7
+%
+
+1 0 obj
+<<
+/Type /Pages
+/Kids [ 4 0 R ]
+/Count 1
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction <<
+/S /JavaScript
+/JS (app.alert("Zero Trust Test Alert!");)
+>>
+>>
+endobj
+
+3 0 obj
+<<
+/Producer <FEFF007000640066002D006C006900620020002800680074007400700073003A002F002F006700690074006800750062002E0063006F006D002F0048006F007000640069006E0067002F007000640066002D006C006900620029>
+/ModDate (D:20260727193645Z)
+/Creator <FEFF007000640066002D006C006900620020002800680074007400700073003A002F002F006700690074006800750062002E0063006F006D002F0048006F007000640069006E0067002F007000640066002D006C006900620029>
+/CreationDate (D:20260727193645Z)
+>>
+endobj
+
+4 0 obj
+<<
+/Type /Page
+/Parent 1 0 R
+/Resources <<
+/Font <<
+/Helvetica-7098480789 5 0 R
+>>
+/XObject <<
+>>
+/ExtGState <<
+>>
+>>
+/MediaBox [ 0 0 600 400 ]
+/Annots [ ]
+/Contents [ 6 0 R ]
+>>
+endobj
+
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+/Encoding /WinAnsiEncoding
+>>
+endobj
+
+6 0 obj
+<<
+/Filter /FlateDecode
+/Length 211
+>>
+stream
+xœOAJ1¼÷+rÄN']€;3<xò‘U=¬ˆï·3³Ò$©TªBÕ‰¦NÆ|<ÓÕíñíëøùòøpi\K.l¥†ˆĞŸHrèw7iÊ!	‡şN×z€š`ÖlbjÉ²ãE³ŒŠæh–ÅYlÚ
+øR]FqFm¿ıy(fèMè¯Ô/¨uº§ÓÒÊŸiE÷´9ù¯	“°§+¨æE6®aJÇÅ²;^eÅ‚xvT¬£,Æ»oìî2g~r7×¹Ç}³Ÿ6Ş5ø2æPK
+endstream
+endobj
+
+xref
+0 7
+0000000000 65535 f 
+0000000016 00000 n 
+0000000076 00000 n 
+0000000202 00000 n 
+0000000672 00000 n 
+0000000867 00000 n 
+0000000965 00000 n 
+
+trailer
+<<
+/Size 7
+/Root 2 0 R
+/Info 3 0 R
+>>
+
+startxref
+1249
+%%EOF
