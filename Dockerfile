@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # Install Poppler for pdftoppm (needed for PDF rasterisation)
-RUN apk add --no-cache poppler-utils
+RUN apk add --no-cache poppler-utils poppler-doc cairo
 
 WORKDIR /app
 
