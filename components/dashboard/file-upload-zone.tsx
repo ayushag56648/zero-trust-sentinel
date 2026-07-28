@@ -213,14 +213,26 @@ export function FileUploadZone() {
         </div>
       </div>
 
-      {/* Warning banner */}
-      <div className="mb-6 flex items-start gap-2 rounded-lg bg-amber-warning/10 px-4 py-3">
-        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-warning" />
-        <p className="text-xs text-amber-warning/90">
-          <span className="font-medium">Zero-Trust Architecture:</span> Every file is treated as
-          untrusted and will be fully reconstructed.
-        </p>
-      </div>
+      {/* Warning banner / AI Security Assessment Card */}
+      {pipelineStatus === 'success' && result?.aiAnalysis ? (
+        <div className="mb-6 rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-4 shadow-[0_0_15px_rgba(6,182,212,0.1)] transition-all">
+          <div className="flex items-center gap-2 mb-2">
+            <Bot className="h-4 w-4 text-emerald-400 shrink-0" />
+            <h3 className="text-sm font-semibold text-cyan-400">AI Security Assessment</h3>
+          </div>
+          <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+            {result.aiAnalysis}
+          </div>
+        </div>
+      ) : (
+        <div className="mb-6 flex items-start gap-2 rounded-lg bg-amber-warning/10 px-4 py-3">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-warning" />
+          <p className="text-xs text-amber-warning/90">
+            <span className="font-medium">Zero-Trust Architecture:</span> Every file is treated as
+            untrusted and will be fully reconstructed.
+          </p>
+        </div>
+      )}
 
       {/* Processing panel — only shown while active */}
       {pipelineStatus !== 'idle' && (
@@ -306,22 +318,7 @@ export function FileUploadZone() {
             </div>
           )}
 
-          {/* AI Assessment Card */}
-          {result && (
-            <div className="rounded-md border border-primary/20 bg-primary/5 p-4 mt-2">
-              <div className="flex items-center gap-2 mb-2">
-                <Bot className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">AI Security Assessment</h3>
-              </div>
-              <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
-                {result.aiAnalysis ? (
-                  result.aiAnalysis
-                ) : (
-                  <span className="italic opacity-80">Assessment not available.</span>
-                )}
-              </div>
-            </div>
-          )}
+
 
           {/* Error detail */}
           {pipelineStatus === 'error' && errorMsg && (
